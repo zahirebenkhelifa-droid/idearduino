@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arduino Mini-IDE</title>
+<link rel="stylesheet" href="lib/codemirror.css">
+<link rel="stylesheet" href="lib/dracula.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header class="toolbar">
+      <div class="brand">Arduino <span>Mini-IDE</span></div>
+
+      <label class="field">
+        <span>Carte</span>
+        <select id="board"></select>
+      </label>
+
+      <label class="field grow">
+        <span>Serveur de compilation</span>
+        <input id="backendUrl" type="text" placeholder="https://mon-serveur.exemple.com">
+      </label>
+
+      <button id="connectBtn" class="btn secondary">Connecter le port</button>
+      <button id="uploadBtn" class="btn primary" disabled>Compiler &amp; Téléverser</button>
+
+      <div class="status">
+        <span id="statusDot" class="dot"></span>
+        <span id="statusText">Non connecté</span>
+      </div>
+    </header>
+
+    <div id="unsupportedBanner" class="banner" hidden>
+      Ce navigateur ne supporte pas la Web Serial API (ou elle est désactivée par une
+      politique de sécurité). Ouvre cette page avec Google Chrome ou Microsoft Edge à jour.
+      Si tu es sur un Chromebook géré, vérifie <code>chrome://policy</code> →
+      <code>DefaultSerialGuardSetting</code>.
+    </div>
+
+    <main class="workspace">
+      <div class="editor-pane">
+        <textarea id="code"></textarea>
+      </div>
+
+      <aside class="side-pane">
+        <div class="tabs">
+          <button class="tab active" data-tab="log">Console</button>
+          <button class="tab" data-tab="monitor">Moniteur série</button>
+        </div>
+
+        <div id="tab-log" class="tab-content active">
+          <pre id="log"></pre>
+        </div>
+
+        <div id="tab-monitor" class="tab-content">
+          <div class="monitor-controls">
+            <select id="monitorBaud">
+              <option value="9600" selected>9600</option>
+              <option value="19200">19200</option>
+              <option value="38400">38400</option>
+              <option value="57600">57600</option>
+              <option value="115200">115200</option>
+            </select>
+            <button id="monitorToggle" class="btn secondary small">Ouvrir le moniteur</button>
+          </div>
+          <pre id="monitorOutput"></pre>
+          <div class="monitor-send">
+            <input id="monitorInput" type="text" placeholder="Envoyer une ligne…">
+            <button id="monitorSend" class="btn secondary small">Envoyer</button>
+          </div>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script src="lib/codemirror.js"></script>
+  <script src="lib/clike.js"></script>
+  <script src="lib/matchbrackets.js"></script>
+  <script src="lib/closebrackets.js"></script>
+  <script src="boards.js"></script>
+  <script src="ihex.js"></script>
+  <script src="stk500.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
