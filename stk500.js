@@ -151,9 +151,11 @@ class STK500Flasher {
   async _resetBoard() {
     this.onLog("Réinitialisation de la carte (DTR/RTS)...");
     await this.port.setSignals({ dataTerminalReady: false, requestToSend: false });
-    await sleep(250);
+    await sleep(50);
     await this.port.setSignals({ dataTerminalReady: true, requestToSend: true });
     await sleep(50);
+    await this.port.setSignals({ dataTerminalReady: false, requestToSend: false });
+    await sleep(250);
   }
 
   // hexBytes: Uint8Array (image mémoire flash complète, issue de parseIntelHex).
