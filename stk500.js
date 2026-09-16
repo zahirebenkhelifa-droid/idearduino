@@ -29,13 +29,31 @@ function bytesEqual(a, b) {
   return true;
 }
 
-// Petite couche d'E/S bufferisée au-dessus d'un reader Web Serial : permet de demander
-// "donne-moi N octets, avec un délai d'attente de T ms" alors que reader.read() ne
-// garantit ni l'un ni l'autre tout seul.
+// Petite couche d'E/S bufferisée au-dessus d'un reader Web Serial : un unique appel
+// read() tourne en continu en arrière-plan ("pump"), et readBytes() consulte simplement
+// ce qui s'est accumulé, avec un délai d'attente. Important : la Web Serial API n'autorise
+// qu'un seul appel read() en attente à la fois sur un même reader — relancer read() à
+// chaque tentative (comme le faisait la version précédente) empile des lectures jamais
+// résolues et peut geler l'onglet au lieu d'échouer proprement.
 class BufferedSerialReader {
   constructor(reader) {
     this.reader = reader;
     this.buffer = new Uint8Array(0);
+    this.stopped = false;
+    this.pumpError = null;
+    this._pumpPromise = this._pump();
+  }
+
+  async _pump() {
+    try {
+      while (!this.stopped) {
+        const { value, done } = await this.reader.read();
+        if (done) break;
+        if (value && value.length) this._append(value);
+      }
+    } catch (e) {
+      if (!this.stopped) this.pumpError = e;
+    }
   }
 
   _append(chunk) {
@@ -48,25 +66,23 @@ class BufferedSerialReader {
   async readBytes(n, timeoutMs) {
     const deadline = Date.now() + timeoutMs;
     while (this.buffer.length < n) {
-      const remaining = deadline - Date.now();
-      if (remaining <= 0) {
+      if (this.pumpError) throw this.pumpError;
+      if (Date.now() >= deadline) {
         throw new Error("Délai dépassé en attendant une réponse de la carte");
       }
-      const timeoutPromise = sleep(remaining).then(() => ({ timedOut: true }));
-      const readPromise = this.reader.read().then(r => ({ timedOut: false, result: r }));
-      const outcome = await Promise.race([readPromise, timeoutPromise]);
-      if (outcome.timedOut) {
-        throw new Error("Délai dépassé en attendant une réponse de la carte");
-      }
-      const { value, done } = outcome.result;
-      if (done) {
-        throw new Error("Le port série s'est fermé pendant la lecture");
-      }
-      if (value && value.length) this._append(value);
+      await sleep(5);
     }
     const out = this.buffer.slice(0, n);
     this.buffer = this.buffer.slice(n);
     return out;
+  }
+
+  // À appeler avant de relâcher le reader : annule la lecture en attente (sinon
+  // releaseLock() échoue tant qu'un read() n'est pas résolu) et arrête le pump.
+  async stop() {
+    this.stopped = true;
+    try { await this.reader.cancel(); } catch (e) {}
+    try { await this._pumpPromise; } catch (e) {}
   }
 }
 
@@ -205,7 +221,7 @@ class STK500Flasher {
 
       this.onLog("Téléversement terminé ✅");
     } finally {
-      try { this.bufReader.reader.releaseLock(); } catch (e) {}
+      try { await this.bufReader.stop(); } catch (e) {}
       try { this.writer.releaseLock(); } catch (e) {}
     }
   }
