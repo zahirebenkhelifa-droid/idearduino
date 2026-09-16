@@ -117,7 +117,7 @@ class STK500Flasher {
         lastErr = e;
         // On vide le buffer de lecture au cas où des octets parasites traînent.
         this.bufReader.buffer = new Uint8Array(0);
-        await sleep(50);
+        await sleep(15);
       }
     }
     throw new Error("Impossible de synchroniser avec le bootloader : " + (lastErr ? lastErr.message : ""));
@@ -141,10 +141,9 @@ class STK500Flasher {
       await this._resetBoard();
 
       this.onLog("Synchronisation avec le bootloader...");
-      // Deux syncs "à blanc" comme le fait avrdude, la 3e doit passer proprement.
-      await this._sync(6, 400);
-      await this._sync(3, 400);
-      await this._sync(3, 400);
+      // Boucle rapide : mieux vaut beaucoup de tentatives courtes qu'une seule
+      // tentative qui monopolise toute la fenêtre d'ouverture du bootloader.
+      await this._sync(35, 120);
 
       this.onLog("Vérification de la puce...");
       const sig = await this._sendCommand([STK.Cmnd_STK_READ_SIGN], null, 3, 1000);
