@@ -109,18 +109,27 @@ class STK500Flasher {
 
   async _sync(attempts, timeoutMs) {
     let lastErr;
+    let anyDataSeen = false;
     for (let i = 0; i < attempts; i++) {
       try {
         await this._sendCommand([STK.Cmnd_STK_GET_SYNC], [], 0, timeoutMs);
         return;
       } catch (e) {
         lastErr = e;
+        if (this.bufReader.buffer.length > 0) {
+          anyDataSeen = true;
+          const hex = Array.from(this.bufReader.buffer).map(b => b.toString(16).padStart(2, "0")).join(" ");
+          this.onLog("  [diag] tentative " + (i + 1) + " : " + this.bufReader.buffer.length + " octet(s) reçu(s) : " + hex);
+        }
         // On vide le buffer de lecture au cas où des octets parasites traînent.
         this.bufReader.buffer = new Uint8Array(0);
         await sleep(15);
       }
     }
-    throw new Error("Impossible de synchroniser avec le bootloader : " + (lastErr ? lastErr.message : ""));
+    const diag = anyDataSeen
+      ? ""
+      : " — [diag] AUCUNE donnée reçue sur le port pendant toute la boucle (" + attempts + " tentatives).";
+    throw new Error("Impossible de synchroniser avec le bootloader : " + (lastErr ? lastErr.message : "") + diag);
   }
 
   async _resetBoard() {
